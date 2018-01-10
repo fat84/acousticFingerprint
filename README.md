@@ -1,7 +1,5 @@
 ### Acoustic fingerprinting
 
-Develop a methodology for creating unique fingerprints of songs and recognition similar to Shazam. The first time I saw Shazam in action it seemed like magic, and years later I've decided to give it a try and develop my own version.
+This is an algorithm, I developed, for acoustic fingerprinting of songs in a database, and similarity matching of a short song sample to the full song in the database.
 <p>
-It turned out, once I understood Discrete Fourier Transformation and figured out how to apply it to create unique song fingerprints, the rest is pretty straightforward.
-<p>
-The work was inspired after reading an article that describes some of the components in Shazam's algorithm. If you are interested you can find the article here:  http://coding-geek.com/how-shazam-works/
+The methodology uses Fast Fourier Transform, and operations with Numpy arrays.
