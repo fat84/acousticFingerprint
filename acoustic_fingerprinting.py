@@ -38,6 +38,9 @@ except:
 sample_dir = "/Users/valentin/GoogleDrive/MusicEngine/sample/"
 sample_name = "sampleDt16bars102rap_middle.wav"
 
+# Location of the final match data frame saved as pickle object
+final_match_loc = "/Users/valentin/GoogleDrive/MusicEngine/"
+
 
 # ######################################################
 # Create acoustic fingerprints for all songs in the database
@@ -57,12 +60,12 @@ band_176_200 = []
 band_201_225 = []
 band_226_250 = []
 
-# start_fingerprinting = timeit.default_timer()
 
 ### Loop through all songs in the database for which I want to create a fingerprint
 for s in range(0, len(songs_list)):
 
-    print("Creating fingerprint for %s \n" % songs_list[s])
+    start_fingerprinting = timeit.default_timer()
+    print("Creating fingerprint for %s" % songs_list[s])
 
     #### Read in the raw audio data and get the sample rate (in samples/sec)
     sample_rate, soundtrack_data = wavfile.read(songs_dir + songs_list[s])
@@ -144,8 +147,10 @@ for s in range(0, len(songs_list)):
         fft_window = i  # A sequential number of the Fourier transform windows for each song
         song_fft_window.append(songs_list[s].split(".wav")[0] + "_" + str(fft_window))
 
-# end_fingerprinting = timeit.default_timer()
-# print(end_fingerprinting - start_fingerprinting)
+
+    fingerprint_time = timeit.default_timer() - start_fingerprinting
+    print("Done. It took %0.3f seconds to fingerprint %s \n" % (fingerprint_time, songs_list[s]))
+
 
 
 # ######################################################
@@ -241,12 +246,14 @@ for i in range(0, signal_fft_transform_abs.shape[0]):
     sample_201_225.append(max_power[8])
     sample_226_250.append(max_power[9])
 
+
+
 # ######################################################
 # Match the fingerprint of the sample to the database and return the results
 # Determine which match is the actual
 # ######################################################
 
-print("Match the sample song (%s) to the database with fingerprints \n" % sample_name)
+print ("Match the sample song (%s) to the database with fingerprints \n" % sample_name)
 
 import operator
 from collections import Counter
@@ -283,6 +290,12 @@ for j in range(0, len(sample_freq_bands_idx)):
     summary_match_df = pd.DataFrame.from_records(sorted_match_occurences, columns=["song", database_freq_bands_list[j]])
     final_match_df = pd.merge(final_match_df, summary_match_df, on="song")
 
-# Print out the index of songs that are a match
-print((final_match_df.sum(axis=1) / 1980) * 100)
-final_match_df
+
+# Calculate the number of matched points in each frequency band, and print out the index of songs that are a match
+final_match_df_out = (final_match_df.sum(axis = 1) / 1980) * 100
+final_match_df.to_pickle(final_match_loc + "final_match_df")
+
+print ("Below is the matching table. \nThe leftmost column is the list of songs that the sample matched to\n")
+print (final_match_df_out)
+print (final_match_df)
+
