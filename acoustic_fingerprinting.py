@@ -306,10 +306,13 @@ for j in range(0, len(sample_freq_bands_idx)):
 
 # Calculate matching time and the average time to fingerprint all songs
 matching_time = timeit.default_timer() - start_match
-print("Done matching. It took %0.3f seconds to find a match in the database of fingerprints.\n" % matching_time)
+print("Done matching. It took %0.2f seconds to find a match in the database of fingerprints.\n" % matching_time)
 
 avg_fingerprint_time = sum(songs_fingerprint_time) / len(songs_fingerprint_time)
 print("The average fingerprint time is %0.2f seconds.\n" % avg_fingerprint_time)
+
+songs_sizes_mb = [x / (2 ** 20) for x in songs_sizes]
+print("The average WAV file size is %0.2fMB\n" % (sum(songs_sizes_mb) / len(songs_sizes_mb)))
 
 
 # Calculate the number of matched points in each frequency band. Print out the index of songs that are a match.
@@ -322,8 +325,5 @@ print(final_match_df)
 
 
 # Print some stats
-songs_sizes_mb = [x / (2 ** 20) for x in songs_sizes]
 list(zip(songs_list, songs_sizes_mb, songs_fingerprint_time))
-
-
 
