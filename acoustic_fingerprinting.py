@@ -10,13 +10,27 @@
 # ######################################################
 
 
+import os
+import numpy as np
+import time
+import timeit
 from scipy.fftpack import fft, dct
 from scipy.io import wavfile
-from scipy.signal import blackman, hanning, hamming
-import numpy as np
 from scipy import signal
-import os
-import timeit
+from scipy.signal import blackman, hanning, hamming
+
+
+# Location of sample
+sample_dir = "/Users/valentin/GoogleDrive/MusicEngine/sample/"
+sample_name = "sampleDt16bars102rap_middle.wav"
+
+# Location of the final match data frame saved as pickle object
+final_match_loc = "/Users/valentin/Documents/MusicEngine/"
+
+# Create a list with songs. Remove non-wav elements from the list
+songs_dir = "/Users/valentin/Documents/MusicEngine/wav/" # "/Volumes/EXTERNAL/emoMusic/full_songs/wav/"
+songs_list = os.listdir(songs_dir)
+songs_list = [x for x in songs_list if x.find("wav") > 0]
 
 # Number of points to use in the FFT
 n_fft = 512
@@ -25,21 +39,12 @@ n_fft = 512
 frame_size = 0.025
 frame_overlap = 0.015
 
-# Create a list with songs. Remove non-wav elements from the list
-songs_dir = "/Users/valentin/GoogleDrive/MusicEngine/wav/"
-songs_list = os.listdir(songs_dir)
+# Collect stats to assess the speed of the algorithm - record file size and fingerprint time for all WAV files
+songs_sizes = []
+songs_fingerprint_time = []
 
-try:
-    songs_list.remove(".DS_Store")
-except:
-    songs_list
-
-# Location of sample
-sample_dir = "/Users/valentin/GoogleDrive/MusicEngine/sample/"
-sample_name = "sampleDt16bars102rap_middle.wav"
-
-# Location of the final match data frame saved as pickle object
-final_match_loc = "/Users/valentin/GoogleDrive/MusicEngine/"
+for i in range(0, len(songs_list)):
+    songs_sizes.append(os.path.getsize(songs_dir + songs_list[i]))
 
 
 # ######################################################
@@ -60,6 +65,7 @@ band_176_200 = []
 band_201_225 = []
 band_226_250 = []
 
+song_counter = len(songs_list) - 1
 
 ### Loop through all songs in the database for which I want to create a fingerprint
 for s in range(0, len(songs_list)):
@@ -96,14 +102,14 @@ for s in range(0, len(songs_list)):
 
     frames_idx = np.tile(np.arange(0, frame_length), (number_frames, 1)) + \
                  np.tile(np.arange(0, number_frames * frame_step, frame_step), (frame_length, 1)).T
-    signal_frames = pad_signal[frames_idx.astype(np.int32, copy=False)]
+    signal_frames = pad_signal[frames_idx.astype(np.int32, copy = False)]
 
     #### Create a window function for the Fourier transform. The windows are used for smoothing values of the raw signal in each time frame
     signal_frames *= np.hamming(frame_length)
 
     #### Calculate FFT (FFT is the implementation of the Discrete Fourier Transformation)
     # The FFT is symmetrical, and by using "np.fft.rfft" we only take the first half automatically. Otherwise, if we use "np.fft.fft" we'll need to take the first half only
-    signal_fft_transform = np.fft.rfft(signal_frames, n=n_fft)
+    signal_fft_transform = np.fft.rfft(signal_frames, n = n_fft)
     signal_fft_transform_abs = np.absolute(signal_fft_transform)
 
     # Calculate the power for each frame
@@ -147,9 +153,14 @@ for s in range(0, len(songs_list)):
         fft_window = i  # A sequential number of the Fourier transform windows for each song
         song_fft_window.append(songs_list[s].split(".wav")[0] + "_" + str(fft_window))
 
-
     fingerprint_time = timeit.default_timer() - start_fingerprinting
-    print("Done. It took %0.3f seconds to fingerprint %s \n" % (fingerprint_time, songs_list[s]))
+    songs_fingerprint_time.append(fingerprint_time)
+
+    print("Done. It took %0.3f seconds to fingerprint %s" % (fingerprint_time, songs_list[s]))
+    print("%s more songs to process.\n" % song_counter)
+    song_counter -= 1
+
+print("Completed fingerprinting all songs in the database... \n")
 
 
 
@@ -157,7 +168,7 @@ for s in range(0, len(songs_list)):
 # Create an acoustic fingerprint for the short song sample
 # ######################################################
 
-print("Creating fingerprint for the sample song - %s \n" % sample_name)
+print("Creating fingerprint for the sample song - %s." % sample_name)
 
 # Create empty lists for song names with FFT frame and the frequency bands
 sample_0_25 = []
@@ -200,14 +211,14 @@ pad_signal = np.append(audio_signal, zeros_vector)
 
 frames_idx = np.tile(np.arange(0, frame_length), (number_frames, 1)) + np.tile(
     np.arange(0, number_frames * frame_step, frame_step), (frame_length, 1)).T
-signal_frames = pad_signal[frames_idx.astype(np.int32, copy=False)]
+signal_frames = pad_signal[frames_idx.astype(np.int32, copy = False)]
 
 #### Create a window function for the Fourier transform. The windows are used for smoothing values of the raw signal in each time frame
 signal_frames *= np.hamming(frame_length)
 
 #### Calculate FFT (FFT is the implementation of the Discrete Fourier Transformation)
 # The FFT is symmetrical, and by using "np.fft.rfft" we only take the first half automatically. Otherwise, if we use "np.fft.fft" we'll need to take the first half only
-signal_fft_transform = np.fft.rfft(signal_frames, n=n_fft)
+signal_fft_transform = np.fft.rfft(signal_frames, n = n_fft)
 signal_fft_transform_abs = np.absolute(signal_fft_transform)
 
 # Calculate the power for each frame
@@ -246,6 +257,8 @@ for i in range(0, signal_fft_transform_abs.shape[0]):
     sample_201_225.append(max_power[8])
     sample_226_250.append(max_power[9])
 
+print("Completed fingerprinting the sample file...\n")
+
 
 
 # ######################################################
@@ -253,14 +266,15 @@ for i in range(0, signal_fft_transform_abs.shape[0]):
 # Determine which match is the actual
 # ######################################################
 
-print ("Match the sample song (%s) to the database with fingerprints \n" % sample_name)
-
 import operator
 from collections import Counter
 import pandas as pd
 
+print("Starting the matching process of the sample song (%s) to the database with fingerprints \n" % sample_name)
+start_match = timeit.default_timer()
+
 database_songs_list = [x.split(".wav")[0] for x in os.listdir(songs_dir)]
-final_match_df = pd.DataFrame(data=database_songs_list, columns=["song"])
+final_match_df = pd.DataFrame(data = database_songs_list, columns = ["song"])
 
 sample_0_25 = set(sample_0_25)
 sample_26_50 = set(sample_26_50)
@@ -285,17 +299,31 @@ for j in range(0, len(sample_freq_bands_idx)):
     song_match_list = [song_fft_window[i].split("_")[0] for i in match_idx]
 
     count_match_occurences = dict(Counter(song_match_list))
-    sorted_match_occurences = sorted(count_match_occurences.items(), key=lambda x: x[1], reverse=True)
+    sorted_match_occurences = sorted(count_match_occurences.items(), key = lambda x: x[1], reverse = True)
 
-    summary_match_df = pd.DataFrame.from_records(sorted_match_occurences, columns=["song", database_freq_bands_list[j]])
-    final_match_df = pd.merge(final_match_df, summary_match_df, on="song")
+    summary_match_df = pd.DataFrame.from_records(sorted_match_occurences, columns = ["song", database_freq_bands_list[j]])
+    final_match_df = pd.merge(final_match_df, summary_match_df, on = "song")
+
+# Calculate matching time and the average time to fingerprint all songs
+matching_time = timeit.default_timer() - start_match
+print("Done matching. It took %0.3f seconds to find a match in the database of fingerprints.\n" % matching_time)
+
+avg_fingerprint_time = sum(songs_fingerprint_time) / len(songs_fingerprint_time)
+print("The average fingerprint time is %0.2f seconds.\n" % avg_fingerprint_time)
 
 
-# Calculate the number of matched points in each frequency band, and print out the index of songs that are a match
+# Calculate the number of matched points in each frequency band. Print out the index of songs that are a match.
+print("Below is the matching table. The leftmost column is the list of songs that the sample matched to.\n")
 final_match_df_out = (final_match_df.sum(axis = 1) / 1980) * 100
 final_match_df.to_pickle(final_match_loc + "final_match_df")
 
-print ("Below is the matching table. \nThe leftmost column is the list of songs that the sample matched to\n")
-print (final_match_df_out)
-print (final_match_df)
+print(final_match_df_out)
+print(final_match_df)
+
+
+# Print some stats
+songs_sizes_mb = [x / (2 ** 20) for x in songs_sizes]
+list(zip(songs_list, songs_sizes_mb, songs_fingerprint_time))
+
+
 
